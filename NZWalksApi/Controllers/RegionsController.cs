@@ -1,6 +1,7 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using NZWalksApi.Models.Domain;
+using NZWalksApi.Models.DTO;
 using NZWalksApi.Repositories;
 
 namespace NZWalksApi.Controllers
@@ -17,8 +18,6 @@ namespace NZWalksApi.Controllers
             _regionRepository = regionRepository;
             _mapper=mapper;
         }
-
-
         [HttpGet]
         public async Task<IActionResult> GetAllRegions()
         {
@@ -65,6 +64,51 @@ namespace NZWalksApi.Controllers
             // return DTO region using AutoMapper
             var regionsDto=_mapper.Map<List<Models.DTO.Region>>(regions);
             return Ok(regionsDto);
+        }
+
+        [HttpGet("{id}")]
+        [Route("{id:guid}")]
+        [ActionName("GetRegionAsync")]
+        // {id} is a placeholder for the id parameter and :guid is a constraint to ensure that the id is a guid
+        public async Task<IActionResult> GetRegionAsync(Guid id)
+        {
+            var region=await _regionRepository.GetAsync(id);
+            if(region==null)
+            {
+                return NotFound();
+            }
+            var regionDTO=_mapper.Map<Models.DTO.Region>(region);
+            return Ok(regionDTO);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddRegionAsync(AddRegionRequest addRegionRequest)
+        {
+            // Request(DTO) to Domain Model
+            var region=new Models.Domain.Region(){
+                Code=addRegionRequest.Code,
+                Name=addRegionRequest.Name,
+                Area=addRegionRequest.Area,
+                Lat=addRegionRequest.Lat,
+                Long=addRegionRequest.Long,
+                Population=addRegionRequest.Population
+            };
+            // Pass details to Repository
+            var newRegion=await _regionRepository.AddAsync(region);
+            // Convert Domain Model to DTO
+            var regionDTO=_mapper.Map<Models.DTO.Region>(newRegion);
+            // var regionDTO=new Models.DTO.Region(){
+            //     Id=newRegion.Id,
+            //     Code=newRegion.Code,
+            //     Name=newRegion.Name,
+            //     Area=newRegion.Area,
+            //     Lat=newRegion.Lat,
+            //     Long=newRegion.Long,
+            //     Population=newRegion.Population
+            // };
+
+            //  with CreatedAtAction, the client will receive a 201 status code and the Location header will be set to the URL of the newly created resource
+            return CreatedAtAction(nameof(GetRegionAsync),new {id=regionDTO.Id},regionDTO);
         }
     }
 }
